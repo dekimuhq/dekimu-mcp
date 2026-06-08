@@ -11,7 +11,12 @@
     "build": "tsc",
     "test": "vitest run",
     "start": "node dist/server.js",
-    "check:no-private-dep": "! grep -rEq \"^(import|export).*from.*@dekimuhq/|require\\(@dekimuhq/\" src/ || (echo 'ERROR: private @dekimuhq import found' && exit 1)"
+    "check:no-private-dep": "! grep -rEq \"^(import|export).*from.*@dekimuhq/|require\\(@dekimuhq/\" src/ || (echo 'ERROR: private @dekimuhq import found' && exit 1)",
+    "prepublishOnly": "npm run check:no-private-dep && npm run build && npm test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
