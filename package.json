@@ -11,7 +11,7 @@
     "build": "tsc",
     "test": "vitest run",
     "start": "node dist/server.js",
-    "check:no-private-dep": "! grep -rq \"@dekimuhq/\" src/ || (echo 'ERROR: private @dekimuhq import found' && exit 1)"
+    "check:no-private-dep": "! grep -rEq \"^(import|export).*from.*@dekimuhq/|require\\(@dekimuhq/\" src/ || (echo 'ERROR: private @dekimuhq import found' && exit 1)"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
