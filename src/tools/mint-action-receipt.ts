@@ -14,8 +14,20 @@ export function mintHandler(
   args: { action: string; inputs?: unknown; output?: unknown; metadata?: Record<string, unknown> },
   now: number,
 ) {
-  const kp = loadOrCreateKeypair();
-  const receipt = mintActionReceipt(args, kp, now);
+  let receipt;
+  try {
+    const kp = loadOrCreateKeypair();
+    receipt = mintActionReceipt(args, kp, now);
+  } catch (error: unknown) {
+    // inputs/output/metadata are agent-controlled (z.unknown). Non-JSON values
+    // (non-finite numbers, bigint, functions, toJSON objects) make canonicalize
+    // throw — surface it as a tool error rather than crashing the server.
+    const message = error instanceof Error ? error.message : "unknown error";
+    return {
+      isError: true,
+      content: [{ type: "text" as const, text: `mint failed: ${message}` }],
+    };
+  }
   return {
     content: [
       {

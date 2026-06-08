@@ -14,4 +14,12 @@ describe("canonicalize (RFC-8785 JCS)", () => {
   it("serializes integers without decimals", () => {
     expect(canonicalize({ n: 42 })).toBe('{"n":42}');
   });
+  it("rejects non-finite numbers (RFC-8785 forbids NaN/Infinity)", () => {
+    expect(() => canonicalize(NaN)).toThrow(/non-finite/);
+    expect(() => canonicalize({ x: Infinity })).toThrow(/non-finite/);
+    expect(() => canonicalize([-Infinity])).toThrow(/non-finite/);
+  });
+  it("rejects objects with a toJSON method (would silently collide, e.g. Date -> {})", () => {
+    expect(() => canonicalize(new Date(0))).toThrow(/toJSON/);
+  });
 });

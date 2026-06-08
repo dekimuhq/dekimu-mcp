@@ -5,14 +5,23 @@ import { ActionReceiptSchema } from "./shapes.js";
 export interface VerifyResult {
   valid: boolean;
   issuer: string | null;
-  checks: { structure: boolean; signature: boolean; fingerprint: boolean };
+  // NOTE: `fingerprintSelfConsistent` only checks that fingerprint == hash(publicKey).
+  // It is NOT an identity proof — a self-signed receipt's issuer chooses both the key
+  // and the signature, so `valid:true` means only "someone holding this key signed
+  // these bytes", never "this came from a trusted party".
+  checks: { structure: boolean; signature: boolean; fingerprintSelfConsistent: boolean };
   reason?: string;
 }
 
 export function verifyReceipt(receipt: unknown): VerifyResult {
   const parsed = ActionReceiptSchema.safeParse(receipt);
   if (!parsed.success) {
-    return { valid: false, issuer: null, checks: { structure: false, signature: false, fingerprint: false }, reason: "structure: not an ar.action.v1 receipt" };
+    return {
+      valid: false,
+      issuer: null,
+      checks: { structure: false, signature: false, fingerprintSelfConsistent: false },
+      reason: "structure: not an ar.action.v1 receipt",
+    };
   }
   const r = parsed.data;
   const fpOk = fingerprint(r.issuer.publicKey) === r.issuer.fingerprint;
@@ -25,7 +34,7 @@ export function verifyReceipt(receipt: unknown): VerifyResult {
   return {
     valid,
     issuer: r.issuer.kind,
-    checks: { structure: true, signature: sigOk, fingerprint: fpOk },
+    checks: { structure: true, signature: sigOk, fingerprintSelfConsistent: fpOk },
     ...(valid ? {} : { reason: !sigOk ? "signature: does not verify" : "fingerprint: mismatch" }),
   };
 }
