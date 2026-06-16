@@ -20,7 +20,7 @@ export function verifyReceipt(receipt: unknown): VerifyResult {
       valid: false,
       issuer: null,
       checks: { structure: false, signature: false, fingerprintSelfConsistent: false },
-      reason: "structure: not an ar.action.v1 receipt",
+      reason: "structure: not a dekimu.mcp.action.v1 receipt",
     };
   }
   const r = parsed.data;

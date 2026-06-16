@@ -32,7 +32,7 @@ export function mintHandler(
     content: [
       {
         type: "text" as const,
-        text: `Minted ar.action.v1 receipt, self-signed by local key ${receipt.issuer.fingerprint} (NOT a Dekimu trusted issuer — anchor against the trusted issuer via Hub).`,
+        text: `Minted dekimu.mcp.action.v1 receipt, self-signed by local key ${receipt.issuer.fingerprint} (NOT a Dekimu trusted issuer — anchor against the trusted issuer via Hub).`,
       },
       { type: "text" as const, text: JSON.stringify(receipt, null, 2) },
     ],

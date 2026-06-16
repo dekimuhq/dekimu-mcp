@@ -5,7 +5,7 @@ describe("mintHandler (tool boundary)", () => {
   it("mints a receipt for well-formed input", () => {
     const res = mintHandler({ action: "summarize", output: "done" }, 1000);
     expect(res.isError).toBeUndefined();
-    expect(res.content[0].text).toContain("Minted ar.action.v1 receipt");
+    expect(res.content[0].text).toContain("Minted dekimu.mcp.action.v1 receipt");
   });
 
   it("returns a tool error (not a crash) for non-JSON agent input", () => {

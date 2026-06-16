@@ -15,6 +15,6 @@ export function mintActionReceipt(input: MintInput, kp: Keypair, issuedAt: numbe
     publicKey: kp.publicKey,
     fingerprint: fingerprint(kp.publicKey),
   };
-  const signature = sign(canonicalize({ kind: "ar.action.v1", body, issuer }), kp.privateKey);
-  return { kind: "ar.action.v1", body, issuer, signature };
+  const signature = sign(canonicalize({ kind: "dekimu.mcp.action.v1", body, issuer }), kp.privateKey);
+  return { kind: "dekimu.mcp.action.v1", body, issuer, signature };
 }

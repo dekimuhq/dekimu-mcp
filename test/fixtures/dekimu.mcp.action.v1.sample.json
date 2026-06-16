@@ -1,0 +1,40 @@
+{
+  "_comment": [
+    "Offline-recorded conformance fixture for dekimu.mcp.action.v1.",
+    "Minted deterministically: fixed private key (all 0x01 bytes), fixed inputs, fixed issuedAt.",
+    "The private key is TEST-ONLY — never use it in production.",
+    "Canonical payload (RFC-8785 JCS): see _fixture_meta.canonical_sig_payload.",
+    "",
+    "CLAIM_TYPE NOTE:",
+    "dekimu-mcp uses `dekimu.mcp.action.v1` — NOT `ar.action.v1`.",
+    "The `ar.action.v1` identifier is the registered canonical AActR anchors family",
+    "on verify.dekimu.com, whose body parser expects Hub shape:",
+    "(profile/verb/rule_id/recipe_id/outcome/executed_at/decision_commit/…).",
+    "dekimu-mcp's body shape (action/inputsHash/outputHash/metadata/issuedAt) has zero",
+    "overlap with that schema — using `ar.action.v1` would impersonate a registered family.",
+    "Using `dekimu.mcp.action.v1` signals a local offline receipt; verify.dekimu.com renders",
+    "it as a generic anchored receipt, which is correct and honest."
+  ],
+  "_fixture_meta": {
+    "private_key_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+    "private_key_purpose": "TEST VECTOR ONLY — deterministic fixture, never use in production",
+    "canonical_sig_payload": "{\"body\":{\"action\":\"summarize\",\"inputsHash\":\"dffea511976a247fe59b7df29089c39ca5a1c2f2997b5e5b3ed7f7b1476efff4\",\"issuedAt\":1000000000,\"metadata\":{\"agent\":\"dekimu-mcp-test\",\"version\":\"0.1.0\"},\"outputHash\":\"8a7f0ac8917023fae3a5fba18d3687fd0e4fe4cb25686c574ba3cc440a420754\"},\"issuer\":{\"fingerprint\":\"95bbfbb1f0ef8f23\",\"kind\":\"local-self-signed\",\"publicKey\":\"8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c\"},\"kind\":\"dekimu.mcp.action.v1\"}"
+  },
+  "kind": "dekimu.mcp.action.v1",
+  "body": {
+    "action": "summarize",
+    "inputsHash": "dffea511976a247fe59b7df29089c39ca5a1c2f2997b5e5b3ed7f7b1476efff4",
+    "outputHash": "8a7f0ac8917023fae3a5fba18d3687fd0e4fe4cb25686c574ba3cc440a420754",
+    "metadata": {
+      "agent": "dekimu-mcp-test",
+      "version": "0.1.0"
+    },
+    "issuedAt": 1000000000
+  },
+  "issuer": {
+    "kind": "local-self-signed",
+    "publicKey": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+    "fingerprint": "95bbfbb1f0ef8f23"
+  },
+  "signature": "ae6e879be3f4b95538d169a66d7cc0d0e5122d438f053973b24c4324e71ec7aa200b210a5d612a5b61d3e417afe26caa2f58a8ee4b2cc9ac9abd71d98452f500"
+}
