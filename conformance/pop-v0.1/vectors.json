@@ -1,0 +1,151 @@
+{
+  "suite": "agent-capability-pop",
+  "vectorVersion": "0.1",
+  "alg": "Ed25519",
+  "algNote": "Informational. The live door takes `alg` from the trusted mandate's terminal block (pop.ts), NEVER from the caller or this vector.",
+  "testKey": {
+    "role": "TEST-ONLY — trusted by NO door. The door binds the terminal key to a trusted mandate root; this key fails that bind. Published only for KAT reproducibility.",
+    "seedHex": "0909090909090909090909090909090909090909090909090909090909090909",
+    "agentPublicKey": "_RckOFqgx1tk-3jNYC-h2ZH96_drE8WO1wLqyDXp9hg"
+  },
+  "signedPayload": {
+    "description": "The signature is over canonicalize({jti, ts, capabilityId, workspaceId, agentId, input}). The door RECONSTRUCTS this from the request + proof; it is NOT transmitted as one object.",
+    "fields": [
+      "agentId",
+      "capabilityId",
+      "input",
+      "jti",
+      "ts",
+      "workspaceId"
+    ],
+    "fieldsAreASet": true
+  },
+  "transmitted": {
+    "description": "handleCall(req, proof). `proof` carries ONLY {jti, ts, sig}; the other 4 signed fields live on `req` and are re-derived door-side.",
+    "request": [
+      "capabilityId",
+      "credential",
+      "input",
+      "workspaceId",
+      "agentId"
+    ],
+    "proof": [
+      "jti",
+      "ts",
+      "sig"
+    ]
+  },
+  "canonicalization": {
+    "summary": "Signed bytes = UTF-8(JSON.stringify(stableSort(payload))). Reproduce WITHOUT a JS engine using the rules below.",
+    "keySort": "Recursively sort object keys ascending by UTF-16 code unit (JavaScript String comparison). Arrays keep insertion order (NOT sorted). Drop keys whose value is undefined or a function.",
+    "numbers": "ECMAScript Number::toString (IEEE-754 double, shortest round-trip): no trailing '.0' on integers, '-0' serializes as '0', large/small magnitudes use exponent form ('1e+21'). Integers above 2^53-1 are unsafe (lossy) — do not rely on them.",
+    "strings": "Raw UTF-8 bytes. Non-ASCII is NOT \\uXXXX-escaped. Escaped per JSON: the control set U+0000–U+001F, plus '\"' and '\\\\'. U+2028/U+2029 are emitted literally by JSON.stringify (NOT escaped) — match that.",
+    "encoding": "UTF-8 of the resulting JSON text. The signature is over those bytes (see canonicalBytesHex), not the string."
+  },
+  "freshness": {
+    "description": "A byte-perfect signature is necessary but not sufficient; the door also enforces:",
+    "windowSeconds": 60,
+    "futureSkewSeconds": 5,
+    "rule": "Accept iff (now - ts) <= 60 AND (ts - now) <= 5. `jti` is single-use within window+skew (65s). Vectors use a FIXED past `ts`, so they are signature KATs — a LIVE call MUST stamp `ts` near now and a fresh `jti`."
+  },
+  "precedence": {
+    "note": "verifyPoP order (pop.ts): freshness -> mandate trust-bind -> terminal-key identity bind (terminalKey===credential.agentPublicKey, workspaceId/agentId match) -> SIGNATURE -> replay. A correct signature is checked only AFTER the credential is trust-bound; this vector covers the signature step only."
+  },
+  "vectors": [
+    {
+      "name": "baseline-ascii",
+      "note": "All-ASCII, integer ts, flat input.",
+      "payload": {
+        "jti": "01J9Z8K7Q6R5S4T3U2V1W0X9YZ",
+        "ts": 1750000000,
+        "capabilityId": "ropa.compile",
+        "workspaceId": "ws_conformance_0001",
+        "agentId": "agent_conformance_0001",
+        "input": {
+          "since": "2026-01-01",
+          "includeDrafts": false
+        }
+      },
+      "canonicalString": "{\"agentId\":\"agent_conformance_0001\",\"capabilityId\":\"ropa.compile\",\"input\":{\"includeDrafts\":false,\"since\":\"2026-01-01\"},\"jti\":\"01J9Z8K7Q6R5S4T3U2V1W0X9YZ\",\"ts\":1750000000,\"workspaceId\":\"ws_conformance_0001\"}",
+      "canonicalBytesHex": "7b226167656e744964223a226167656e745f636f6e666f726d616e63655f30303031222c226361706162696c6974794964223a22726f70612e636f6d70696c65222c22696e707574223a7b22696e636c756465447261667473223a66616c73652c2273696e6365223a22323032362d30312d3031227d2c226a7469223a2230314a395a384b3751365235533454335532563157305839595a222c227473223a313735303030303030302c22776f726b73706163654964223a2277735f636f6e666f726d616e63655f30303031227d",
+      "signature": "siGaV6WhHTgDRSXOwvw-S7AcduXIjhTjRHxMtRvF52hzveiWxHMreSZrAegEXTnpmJTGI4iNE6oVDH_QZo0oDg",
+      "roundTrips": true
+    },
+    {
+      "name": "numbers-float-neg-exp",
+      "note": "Exercises JS Number::toString: float, -0 -> '0', exponent, integer at the 2^53 safe edge. Integers > 2^53 are NOT representable (JS Number); producers MUST treat numbers with JS-Number/IEEE-754 shortest-round-trip semantics.",
+      "payload": {
+        "jti": "01JNUM0FLOAT0000000000000A",
+        "ts": 1750000001,
+        "capabilityId": "spend.step",
+        "workspaceId": "ws_conformance_0001",
+        "agentId": "agent_conformance_0001",
+        "input": {
+          "score": 0.1,
+          "ratio": 0,
+          "big": 1e+21,
+          "safeMax": 9007199254740991,
+          "neg": -12.5
+        }
+      },
+      "canonicalString": "{\"agentId\":\"agent_conformance_0001\",\"capabilityId\":\"spend.step\",\"input\":{\"big\":1e+21,\"neg\":-12.5,\"ratio\":0,\"safeMax\":9007199254740991,\"score\":0.1},\"jti\":\"01JNUM0FLOAT0000000000000A\",\"ts\":1750000001,\"workspaceId\":\"ws_conformance_0001\"}",
+      "canonicalBytesHex": "7b226167656e744964223a226167656e745f636f6e666f726d616e63655f30303031222c226361706162696c6974794964223a227370656e642e73746570222c22696e707574223a7b22626967223a31652b32312c226e6567223a2d31322e352c22726174696f223a302c22736166654d6178223a393030373139393235343734303939312c2273636f7265223a302e317d2c226a7469223a2230314a4e554d30464c4f41543030303030303030303030303041222c227473223a313735303030303030312c22776f726b73706163654964223a2277735f636f6e666f726d616e63655f30303031227d",
+      "signature": "5a0VxzhNtZxt-SZSHm_OdykGXJ4ojIeOdm9AlJXX2Y-Tto_CIigNhXe833KKvbIf1ToEX9pPYroF6QmvPuBNAg",
+      "roundTrips": true
+    },
+    {
+      "name": "nested-out-of-order",
+      "note": "Nested objects with reverse-sorted keys + arrays. Verifies recursion (nested keys sorted) AND array order preserved (NOT sorted).",
+      "payload": {
+        "jti": "01JNESTED000000000000000B",
+        "ts": 1750000002,
+        "capabilityId": "ropa.compile",
+        "workspaceId": "ws_conformance_0001",
+        "agentId": "agent_conformance_0001",
+        "input": {
+          "z": {
+            "b": 1,
+            "a": 2
+          },
+          "m": [
+            3,
+            2,
+            1
+          ],
+          "a": {
+            "y": {
+              "n": false,
+              "m": true
+            },
+            "x": 0
+          }
+        }
+      },
+      "canonicalString": "{\"agentId\":\"agent_conformance_0001\",\"capabilityId\":\"ropa.compile\",\"input\":{\"a\":{\"x\":0,\"y\":{\"m\":true,\"n\":false}},\"m\":[3,2,1],\"z\":{\"a\":2,\"b\":1}},\"jti\":\"01JNESTED000000000000000B\",\"ts\":1750000002,\"workspaceId\":\"ws_conformance_0001\"}",
+      "canonicalBytesHex": "7b226167656e744964223a226167656e745f636f6e666f726d616e63655f30303031222c226361706162696c6974794964223a22726f70612e636f6d70696c65222c22696e707574223a7b2261223a7b2278223a302c2279223a7b226d223a747275652c226e223a66616c73657d7d2c226d223a5b332c322c315d2c227a223a7b2261223a322c2262223a317d7d2c226a7469223a2230314a4e455354454430303030303030303030303030303042222c227473223a313735303030303030322c22776f726b73706163654964223a2277735f636f6e666f726d616e63655f30303031227d",
+      "signature": "mCAyLvfEvU2HeqbqCiLF1gRJhgPSzNBWuanpqfVhj3XQI5OZwys_xfp1eXa6FQZcWn_5Wl91bPXDwbXaj5IbBg",
+      "roundTrips": true
+    },
+    {
+      "name": "unicode-surrogate",
+      "note": "Non-ASCII keys+values + an astral-plane emoji (surrogate pair). Verifies raw UTF-8 encoding (NOT \\uXXXX escaping) and UTF-16-code-unit key sort.",
+      "payload": {
+        "jti": "01JUNICODE00000000000000C",
+        "ts": 1750000003,
+        "capabilityId": "notice.send",
+        "workspaceId": "ws_conformance_0001",
+        "agentId": "agent_conformance_0001",
+        "input": {
+          "café": "über",
+          "札幌": true,
+          "emoji": "😀",
+          "note": "line sep"
+        }
+      },
+      "canonicalString": "{\"agentId\":\"agent_conformance_0001\",\"capabilityId\":\"notice.send\",\"input\":{\"café\":\"über\",\"emoji\":\"😀\",\"note\":\"line sep\",\"札幌\":true},\"jti\":\"01JUNICODE00000000000000C\",\"ts\":1750000003,\"workspaceId\":\"ws_conformance_0001\"}",
+      "canonicalBytesHex": "7b226167656e744964223a226167656e745f636f6e666f726d616e63655f30303031222c226361706162696c6974794964223a226e6f746963652e73656e64222c22696e707574223a7b22636166c3a9223a22c3bc626572222c22656d6f6a69223a22f09f9880222c226e6f7465223a226c696e65e280a8736570222c22e69cade5b98c223a747275657d2c226a7469223a2230314a554e49434f4445303030303030303030303030303043222c227473223a313735303030303030332c22776f726b73706163654964223a2277735f636f6e666f726d616e63655f30303031227d",
+      "signature": "gzlnh37rsMEv-8DZ_fwIfr6hpfsLOLAg6B9dph9xuw60eiZEwS5h1lnsd_3Xiw1FZjAaZPY9wEDZc2S1LRe-CA",
+      "roundTrips": true
+    }
+  ]
+}
