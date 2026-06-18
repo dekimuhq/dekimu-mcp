@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { mintInputSchema, mintHandler } from "./tools/mint-action-receipt.js";
 import { verifyInputSchema, verifyHandler } from "./tools/verify-receipt.js";
 import { gdprInputSchema, gdprHandler } from "./tools/gdpr-obligation-check.js";
+import { operateInputSchema, operateHandler } from "./tools/operate-capability.js";
 
 const server = new McpServer({ name: "dekimu-mcp", version: "0.1.0" });
 
@@ -35,6 +36,16 @@ server.registerTool(
     inputSchema: gdprInputSchema,
   },
   async (args) => gdprHandler(args),
+);
+
+server.registerTool(
+  "operate_capability",
+  {
+    description:
+      "Act in the Dekimu ecosystem via the gated capability door (online): signs a Proof-of-Possession with the configured agent credential and invokes a capability (e.g. ropa.compile). Requires DEKIMU_AGENT_CREDENTIAL + DEKIMU_AGENT_TERMINAL_KEY; returns the door verdict (ok/checkpoint/denied) and any receipt id. Fail-closed when the door is disabled.",
+    inputSchema: operateInputSchema,
+  },
+  async (args) => operateHandler(args),
 );
 
 await server.connect(new StdioServerTransport());
