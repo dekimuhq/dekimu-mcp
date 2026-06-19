@@ -46,7 +46,12 @@ const TEST_CREDENTIAL = {
 };
 
 function configFor(): OperateConfig {
-  return { credential: TEST_CREDENTIAL, terminalKeyHex: TEST_SEED_HEX, doorUrl: "https://door.test/api/agent/capabilities" };
+  return {
+    credential: TEST_CREDENTIAL,
+    terminalKeyHex: TEST_SEED_HEX,
+    doorUrl: "https://door.test/api/agent/capabilities",
+    verifyBaseUrl: "https://verify.test",
+  };
 }
 
 describe("buildProof — reproduces the proven conformance vector signature", () => {
@@ -96,19 +101,50 @@ describe("loadConfig — fail-closed validation", () => {
     expect("error" in cfg).toBe(false);
     if (!("error" in cfg)) {
       expect(cfg.doorUrl).toBe("https://app.dekimu.com/api/agent/capabilities");
+      expect(cfg.verifyBaseUrl).toBe("https://verify.dekimu.com");
       expect(cfg.credential.workspaceId).toBe("ws_conformance_0001");
     }
   });
 });
 
-// Fake fetch that records the request and returns a scripted response.
-function fakeFetch(status: number, json: unknown): { fetch: FetchLike; calls: Array<{ url: string; body: unknown }> } {
-  const calls: Array<{ url: string; body: unknown }> = [];
+// Fake fetch that records each request and returns a scripted response. The door call is a
+// POST; operate's post-action re-verification (#5) is a GET to the verifier — by default we
+// answer that GET with 404 (→ verification {checked:false}, harmless to door-path assertions).
+function fakeFetch(status: number, json: unknown): { fetch: FetchLike; calls: Array<{ url: string; method: string; body: unknown }> } {
+  const calls: Array<{ url: string; method: string; body: unknown }> = [];
   const fetch: FetchLike = async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, method: init.method, body: init.body ? JSON.parse(init.body) : null });
+    if (init.method === "GET") return { status: 404, json: async () => ({ error: "not found" }) };
     return { status, json: async () => json };
   };
   return { fetch, calls };
+}
+
+// Routes the door (POST) and verifier (GET) to separate scripted responses — for #5 tests.
+function routedFetch(
+  door: { status: number; json: unknown },
+  verifier: { status: number; json: unknown },
+): { fetch: FetchLike; calls: Array<{ url: string; method: string }> } {
+  const calls: Array<{ url: string; method: string }> = [];
+  const fetch: FetchLike = async (url, init) => {
+    calls.push({ url, method: init.method });
+    const r = init.method === "GET" ? verifier : door;
+    return { status: r.status, json: async () => r.json };
+  };
+  return { fetch, calls };
+}
+
+function verifierReport(capability: string, credentialId: string | undefined = "cred_test_0001") {
+  return {
+    signature: { ok: true, issuerTrusted: true, trust_outcome: "valid_trusted" },
+    envelope: {
+      claim_type: "ar.action.v1",
+      body: {
+        ...(credentialId !== undefined ? { credential_id: credentialId } : {}),
+        caveats_consumed: { data_scope: "ws_conformance_0001", spend_step: 1, capability },
+      },
+    },
+  };
 }
 
 const FIXED_DEPS = { now: () => 1750000000, jti: () => "01J9Z8K7Q6R5S4T3U2V1W0X9YZ" };
@@ -169,5 +205,53 @@ describe("operate — request assembly + verdict mapping", () => {
     const res = await operate({ capability: "gdpr.scan", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
     expect(res.status).toBe("error");
     expect(res.error).toContain("door unreachable");
+  });
+});
+
+describe("operate — post-action re-verification (#5)", () => {
+  it("attaches a matching verification when the public verifier confirms the receipt", async () => {
+    const { fetch, calls } = routedFetch(
+      { status: 200, json: { ok: true, output: { ran: true }, receiptId: "ar.action.v1:01ABC" } },
+      { status: 200, json: verifierReport("ropa.compile") },
+    );
+    const res = await operate({ capability: "ropa.compile", input: { since: "2026-01-01" } }, configFor(), { fetch, ...FIXED_DEPS });
+    expect(res.status).toBe("ok");
+    expect(res.verification?.checked).toBe(true);
+    expect(res.verification?.match).toBe(true);
+    // door POST then verifier GET to the configured base URL.
+    expect(calls.map((c) => c.method)).toEqual(["POST", "GET"]);
+    expect(calls[1]!.url).toBe("https://verify.test/api/v/ar.action.v1%3A01ABC");
+  });
+
+  it("keeps status ok but flags a non-matching verification (capability bait-and-switch)", async () => {
+    const { fetch } = routedFetch(
+      { status: 200, json: { ok: true, receiptId: "ar.action.v1:01ABC" } },
+      { status: 200, json: verifierReport("erasure.execute") }, // receipt records a DIFFERENT verb
+    );
+    const res = await operate({ capability: "ropa.compile", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    expect(res.status).toBe("ok");
+    expect(res.verification?.match).toBe(false);
+    expect(res.verification?.reason).toContain("capability mismatch");
+  });
+
+  it("skips re-verification (no second call) when the door returns no receiptId", async () => {
+    const { fetch, calls } = routedFetch(
+      { status: 200, json: { ok: true } }, // no receiptId
+      { status: 200, json: verifierReport("ropa.compile") },
+    );
+    const res = await operate({ capability: "ropa.compile", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    expect(res.status).toBe("ok");
+    expect(res.verification).toBeUndefined();
+    expect(calls.map((c) => c.method)).toEqual(["POST"]);
+  });
+
+  it("surfaces verification {checked:false} when the receipt is not yet on the verifier", async () => {
+    const { fetch } = routedFetch(
+      { status: 200, json: { ok: true, receiptId: "ar.action.v1:01ABC" } },
+      { status: 404, json: { error: "not found" } },
+    );
+    const res = await operate({ capability: "ropa.compile", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    expect(res.status).toBe("ok");
+    expect(res.verification?.checked).toBe(false);
   });
 });

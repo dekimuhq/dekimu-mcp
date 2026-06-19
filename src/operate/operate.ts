@@ -23,6 +23,7 @@ import { hexToBytes } from "@noble/hashes/utils";
 import { canonicalize } from "../crypto/canonicalize.js";
 // Importing sign wires ed.etc.sha512Sync as a side effect (src/crypto/sign.ts).
 import { sign } from "../crypto/sign.js";
+import { reverifyAction, type ReverifyResult } from "./reverify.js";
 
 /** Door capability ids (route source + design §3). */
 export const CAPABILITY_IDS = [
@@ -36,6 +37,7 @@ export const CAPABILITY_IDS = [
 export type CapabilityId = (typeof CAPABILITY_IDS)[number];
 
 const DEFAULT_DOOR_URL = "https://app.dekimu.com/api/agent/capabilities";
+const DEFAULT_VERIFY_URL = "https://verify.dekimu.com";
 
 /** The agent credential envelope, shape mirrored from @dekimuhq/agent-gateway (forwarded verbatim). */
 export interface CredentialEnvelope {
@@ -50,6 +52,8 @@ export interface OperateConfig {
   readonly credential: CredentialEnvelope;
   readonly terminalKeyHex: string;
   readonly doorUrl: string;
+  /** Public verifier base URL for post-action re-verification (default verify.dekimu.com). */
+  readonly verifyBaseUrl: string;
 }
 
 export interface Spend {
@@ -81,12 +85,22 @@ export interface OperateResult {
   readonly reason?: string;
   readonly stage?: string;
   readonly error?: string;
+  /**
+   * Independent post-action attestation from the public verifier (A1 unit #5). Present on a
+   * successful (`ok`) door call that returned a `receiptId`. `verification.match === false` means
+   * the anchored receipt does NOT match what was invoked — surface it loudly.
+   */
+  readonly verification?: ReverifyResult;
 }
 
-/** Minimal fetch contract — avoids a hard dependency on lib.dom types and makes tests trivial. */
+/**
+ * Minimal fetch contract — avoids a hard dependency on lib.dom types and makes tests trivial.
+ * `body` is OPTIONAL: a GET MUST omit it (undici/WHATWG `fetch` throws on a GET/HEAD with a body,
+ * even an empty string — the post-action re-verify GET relies on this).
+ */
 export type FetchLike = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: string },
+  init: { method: string; headers: Record<string, string>; body?: string },
 ) => Promise<{ status: number; json: () => Promise<unknown> }>;
 
 const hexToB64u = (hex: string): string => Buffer.from(hex, "hex").toString("base64url");
@@ -126,6 +140,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): OperateConfig 
     credential: cred as CredentialEnvelope,
     terminalKeyHex: termKey,
     doorUrl: env.DEKIMU_DOOR_URL && env.DEKIMU_DOOR_URL.length > 0 ? env.DEKIMU_DOOR_URL : DEFAULT_DOOR_URL,
+    verifyBaseUrl: env.DEKIMU_VERIFY_URL && env.DEKIMU_VERIFY_URL.length > 0 ? env.DEKIMU_VERIFY_URL : DEFAULT_VERIFY_URL,
   };
 }
 
@@ -220,8 +235,20 @@ export async function operate(
   const str = (k: string): string | undefined => (isString(j[k]) ? (j[k] as string) : undefined);
 
   switch (res.status) {
-    case 200:
-      return { status: "ok", httpStatus: 200, receiptId: str("receiptId"), output: j.output };
+    case 200: {
+      const receiptId = str("receiptId");
+      // Close the loop: independently re-verify the minted AActR via the public verifier (#5).
+      // Skipped only when the door returned no receiptId (nothing to attest). Fail-safe.
+      let verification: ReverifyResult | undefined;
+      if (receiptId) {
+        const expectedCredentialId = isString(credential.credentialId) ? credential.credentialId : null;
+        verification = await reverifyAction(
+          { receiptId, capability: input.capability, expectedCredentialId },
+          { fetch: fetchImpl, verifyBaseUrl: config.verifyBaseUrl },
+        );
+      }
+      return { status: "ok", httpStatus: 200, receiptId, output: j.output, ...(verification ? { verification } : {}) };
+    }
     case 202:
       return {
         status: "checkpoint",
