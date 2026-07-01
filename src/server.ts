@@ -5,6 +5,8 @@ import { mintInputSchema, mintHandler } from "./tools/mint-action-receipt.js";
 import { verifyInputSchema, verifyHandler } from "./tools/verify-receipt.js";
 import { gdprInputSchema, gdprHandler } from "./tools/gdpr-obligation-check.js";
 import { operateInputSchema, operateHandler } from "./tools/operate-capability.js";
+import { policyQueryInputSchema, policyQueryHandler } from "./tools/autonomy-policy-query.js";
+import { digestLatestInputSchema, digestLatestHandler } from "./tools/ecosystem-digest-latest.js";
 
 const server = new McpServer({ name: "dekimu-mcp", version: "0.1.0" });
 
@@ -46,6 +48,24 @@ server.registerTool(
     inputSchema: operateInputSchema,
   },
   async (args) => operateHandler(args),
+);
+
+server.registerTool(
+  "autonomy_policy_query",
+  {
+    description: "Query the autonomy policy tier for a company domain (read-only)",
+    inputSchema: policyQueryInputSchema,
+  },
+  async (args) => policyQueryHandler(args),
+);
+
+server.registerTool(
+  "ecosystem_digest_latest",
+  {
+    description: "Return the latest ecosystem digest JSON (read-only)",
+    inputSchema: digestLatestInputSchema,
+  },
+  async () => digestLatestHandler(),
 );
 
 await server.connect(new StdioServerTransport());
