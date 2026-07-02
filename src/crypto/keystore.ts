@@ -25,13 +25,23 @@ export function loadOrCreateKeypair(dir: string = defaultKeyDir()): Keypair {
           `Move it aside manually to mint a fresh key.`
       );
     }
-    const kp = parsed as Keypair;
-    if (!kp.privateKey || !kp.publicKey) {
-      throw new Error(`dekimu-mcp keystore: ${path} missing keys. Refusing to regenerate.`);
+    // Validate shape strictly: a truthy-but-malformed key (null file, wrong type,
+    // wrong length, non-hex) would otherwise surface later as an opaque
+    // hexToBytes/sign error — or a TypeError on property access when parsed is null.
+    const isHex64 = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/i.test(v);
+    const kp = (typeof parsed === "object" && parsed !== null ? parsed : {}) as Partial<Keypair>;
+    if (!isHex64(kp.privateKey) || !isHex64(kp.publicKey)) {
+      throw new Error(
+        `dekimu-mcp keystore: ${path} does not contain valid hex ed25519 keys. Refusing to regenerate ` +
+          `(would orphan prior receipts). Move it aside manually to mint a fresh key.`
+      );
     }
-    return kp;
+    // Normalize to lowercase: ActionReceiptSchema pins lowercase hex, so an
+    // uppercase key file would mint receipts that fail their own structure check.
+    return { privateKey: kp.privateKey.toLowerCase(), publicKey: kp.publicKey.toLowerCase() };
   }
-  mkdirSync(dir, { recursive: true });
+  // 0o700: the directory holds a private key — don't rely on the file mode alone.
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
   const kp = generateKeypair();
   writeFileSync(path, JSON.stringify(kp), { mode: 0o600 });
   return kp;

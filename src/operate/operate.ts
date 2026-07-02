@@ -184,17 +184,30 @@ export async function operate(
   const { credential, terminalKeyHex, doorUrl } = config;
   const { workspaceId, agentId } = credential;
 
-  const proof = buildProof(
-    {
-      jti: newJti(),
-      ts: now(),
-      capabilityId: input.capability,
-      workspaceId,
-      agentId,
-      input: input.input,
-    },
-    terminalKeyHex,
-  );
+  // `input.input` is agent-controlled and z.unknown() accepts `undefined` (omitted arg).
+  // canonicalize() rejects undefined / non-JSON values by throwing — keep the documented
+  // never-throws contract by mapping that to a clear error result instead of propagating.
+  let proof: { jti: string; ts: number; sig: string };
+  try {
+    proof = buildProof(
+      {
+        jti: newJti(),
+        ts: now(),
+        capabilityId: input.capability,
+        workspaceId,
+        agentId,
+        input: input.input,
+      },
+      terminalKeyHex,
+    );
+  } catch (e) {
+    return {
+      status: "error",
+      error: `proof build failed (capability input must be JSON-shaped and not undefined): ${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    };
+  }
 
   const body = {
     capabilityId: input.capability,

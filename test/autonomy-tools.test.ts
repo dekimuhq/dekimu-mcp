@@ -13,6 +13,15 @@ describe("read-only MCP tools v0", () => {
     expect(JSON.parse(res.content[0].text).error).toBe("unknown domain");
   });
 
+  it("policy query treats inherited Object.prototype keys as unknown domains", () => {
+    // Untrusted client input: a plain index lookup would resolve these to
+    // prototype members and misreport them as known domains.
+    for (const domain of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+      const res = policyQueryHandler({ domain });
+      expect(JSON.parse(res.content[0].text).error).toBe("unknown domain");
+    }
+  });
+
   it("digest latest degrades when path unconfigured", async () => {
     const prev = process.env.ECOSYSTEM_DIGEST_PATH;
     delete process.env.ECOSYSTEM_DIGEST_PATH;
