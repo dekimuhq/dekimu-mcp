@@ -1,8 +1,11 @@
 import { z } from "zod";
 
-// Mirrors @dekimuhq/autonomy-policy (unpublished). Replace with:
-//   import { getTier, POLICY_VERSION } from "@dekimuhq/autonomy-policy";
-// once that package is published to GitHub Packages (founder-owed gate).
+// Inlined ON PURPOSE — do NOT replace with an import.
+// dekimu-mcp is a PUBLIC MCP server; it must not depend on the private
+// (access:restricted) @dekimuhq/autonomy-policy package. The `check:no-private-dep`
+// guard fails the build on any `@dekimuhq/*` import in src/, and a private dep
+// would break the public npm publish. Keep this map hand-synced with that
+// package's DOMAIN_TIERS (5 stable rows; canonical source lives there).
 const POLICY_VERSION = "0.1.0";
 const DOMAIN_TIERS: Record<string, string> = {
   "engineering-ops": "full-auto",
