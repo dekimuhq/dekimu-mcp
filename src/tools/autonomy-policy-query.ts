@@ -19,7 +19,10 @@ export const policyQueryInputSchema = {
 export const readOnly = true;
 
 export function policyQueryHandler(args: { domain: string }) {
-  const tier = DOMAIN_TIERS[args.domain];
+  // Own-property check: `domain` is untrusted MCP-client input. A plain index
+  // lookup resolves inherited Object.prototype keys ("__proto__", "constructor",
+  // "toString", …) to non-undefined values and misreports them as known domains.
+  const tier = Object.hasOwn(DOMAIN_TIERS, args.domain) ? DOMAIN_TIERS[args.domain] : undefined;
   if (tier === undefined) {
     return {
       content: [

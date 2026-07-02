@@ -206,6 +206,17 @@ describe("operate — request assembly + verdict mapping", () => {
     expect(res.status).toBe("error");
     expect(res.error).toContain("door unreachable");
   });
+
+  it("returns an error result (never throws) when input is undefined — canonicalize rejects it", async () => {
+    // z.unknown() accepts an omitted `input` arg from the MCP client; buildProof's
+    // canonicalize throws on undefined. operate must map that to a result, not throw.
+    const fetch: FetchLike = async () => {
+      throw new Error("fetch must not be reached — proof build fails first");
+    };
+    const res = await operate({ capability: "gdpr.scan", input: undefined }, configFor(), { fetch, ...FIXED_DEPS });
+    expect(res.status).toBe("error");
+    expect(res.error).toContain("proof build failed");
+  });
 });
 
 describe("operate — post-action re-verification (#5)", () => {
