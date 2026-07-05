@@ -10,7 +10,8 @@
  * the SAME self-contained canonicalize + signer proven against the published
  * conformance vectors (conformance/pop-v0.1/) — no private @dekimuhq import.
  *
- * Wire shape pinned from source (dekimu-hub app/api/agent/capabilities/route.ts):
+ * Wire shape pinned to the live capability door's implementation (source wins over
+ * design docs):
  *   body = { capabilityId, input, workspaceId, agentId, credential, spend?, proof }
  *   proof.sig = base64url ed25519 over canonicalize({jti,ts,capabilityId,workspaceId,agentId,input})
  * Note: the door body has NO idempotencyKey field — omitted deliberately (source wins
@@ -39,7 +40,7 @@ export type CapabilityId = (typeof CAPABILITY_IDS)[number];
 const DEFAULT_DOOR_URL = "https://app.dekimu.com/api/agent/capabilities";
 const DEFAULT_VERIFY_URL = "https://verify.dekimu.com";
 
-/** The agent credential envelope, shape mirrored from @dekimuhq/agent-gateway (forwarded verbatim). */
+/** The agent credential envelope — an opaque token forwarded verbatim to the capability door, which owns its schema. */
 export interface CredentialEnvelope {
   readonly workspaceId: string;
   readonly agentId: string;

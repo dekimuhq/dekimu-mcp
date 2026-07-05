@@ -1,5 +1,5 @@
 // Point-in-time GDPR obligation snapshot (vendored). NOT live legal advice.
-// Mirrors the obligation IDs used by @dekimuhq/compass-obligations without importing it.
+// Mirrors the ecosystem's canonical GDPR obligation IDs, vendored here and kept in sync by hand (no private dependency).
 export const GDPR_MANIFEST_VERSION = "gdpr-snapshot-2026-06-08";
 
 export interface Activity {

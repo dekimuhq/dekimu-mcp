@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 // Inlined ON PURPOSE — do NOT replace with an import.
-// dekimu-mcp is a PUBLIC MCP server; it must not depend on the private
-// (access:restricted) @dekimuhq/autonomy-policy package. The `check:no-private-dep`
-// guard fails the build on any `@dekimuhq/*` import in src/, and a private dep
-// would break the public npm publish. Keep this map hand-synced with that
-// package's DOMAIN_TIERS (5 stable rows; canonical source lives there).
+// dekimu-mcp is a PUBLIC MCP server; it must not depend on any private,
+// access-restricted internal package. The `check:no-private-dep` guard fails the
+// build on any private `@dekimuhq/*` import in src/, and such a dep would break the
+// public npm publish. This tier map is a small, stable policy table (5 rows) kept
+// in sync by hand.
 const POLICY_VERSION = "0.1.0";
 const DOMAIN_TIERS: Record<string, string> = {
   "engineering-ops": "full-auto",
