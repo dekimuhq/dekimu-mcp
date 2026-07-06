@@ -50,6 +50,24 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 To anchor against Dekimu's trusted issuer (verifier domain + transparency log + third-party-verifiable provenance), see Hub at https://app.dekimu.com.
 
+## Anchored provenance (optional, OFF by default)
+
+By default `mint_action_receipt` emits a local self-signed `dekimu.mcp.action.v1` receipt and the server runs standalone with zero extra dependencies.
+
+When an **anchored issuer** is configured, the mint path can instead (or also) emit a registered `ar.action.v1` (AActR) provenance receipt for the tool call — the tool becomes the `verb`, the inputs/result become salted commits (raw payloads never enter the receipt), and, when the call ran under a capability mandate, `credential_id` + `caveats_consumed` bind the authorizing mandate into the signed body. An anchored envelope can optionally be wrapped as a **W3C Verifiable Credential** for VC-native consumers.
+
+Configuration (all optional — unset ⇒ local mode, unchanged):
+
+| Env | Effect |
+|---|---|
+| `DEKIMU_RECEIPT_MODE` | `local` (default) · `anchored` · `both` |
+| `DEKIMU_ANCHORED_ISSUER_MODULE` | Module exporting `createAnchoredIssuer()` (or a default factory) that signs + anchors the AActR body. Absent ⇒ anchored requests degrade to a local receipt with a notice. |
+| `DEKIMU_ANCHORS_VC_MODULE` | Optional W3C-VC carrier module (used only when a tool call sets `wrapVc`). Absent ⇒ VC wrap is skipped, the anchored receipt is unaffected. |
+
+The signing/anchoring keys live in the injected issuer, never in this server. Both integrations are loaded dynamically and degrade gracefully when absent. See [docs/anchored-provenance-pattern.md](docs/anchored-provenance-pattern.md).
+
+> **Scope:** an anchored receipt proves the tool call happened as recorded — **not** that the tool's result is correct or safe.
+
 ## License
 
 MIT

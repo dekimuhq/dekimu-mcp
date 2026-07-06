@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { mintInputSchema, mintHandler } from "./tools/mint-action-receipt.js";
+import { mintInputSchema, mintDispatch } from "./tools/mint-action-receipt.js";
 import { verifyInputSchema, verifyHandler } from "./tools/verify-receipt.js";
 import { gdprInputSchema, gdprHandler } from "./tools/gdpr-obligation-check.js";
 import { operateInputSchema, operateHandler } from "./tools/operate-capability.js";
@@ -14,10 +14,11 @@ server.registerTool(
   "mint_action_receipt",
   {
     description:
-      "Mint a tamper-evident, offline-verifiable receipt of an agent action, self-signed by a local key.",
+      "Mint a tamper-evident, offline-verifiable receipt of an agent action, self-signed by a local key. " +
+      "OFF-by-default anchored mode (DEKIMU_RECEIPT_MODE=anchored|both with DEKIMU_ANCHORED_ISSUER_MODULE) instead/also mints a registered ar.action.v1 (AActR), optionally wrapped as a W3C VC.",
     inputSchema: mintInputSchema,
   },
-  async (args) => mintHandler(args, Date.now()),
+  async (args) => mintDispatch(args, Date.now()),
 );
 
 server.registerTool(
