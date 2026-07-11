@@ -68,6 +68,12 @@ The signing/anchoring keys live in the injected issuer, never in this server. Bo
 
 > **Scope:** an anchored receipt proves the tool call happened as recorded — **not** that the tool's result is correct or safe.
 
+## Learn more
+
+- **Verify a receipt:** https://verify.dekimu.com
+- **The specs:** [Anchored Receipts](https://github.com/dekimuhq/anchors-spec) · [agents.txt — policy for agent actions](https://github.com/dekimuhq/agents-txt)
+- **Who builds this:** [Dekimu](https://dekimu.com) — EU-first compliance & agent-trust tooling. Local-first, no lock-in.
+
 ## License
 
 MIT
