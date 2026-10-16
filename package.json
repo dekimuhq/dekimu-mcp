@@ -19,7 +19,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "@noble/ed25519": "2.3.0",
     "@noble/hashes": "1.8.0",
     "zod": "^3.23.0"
