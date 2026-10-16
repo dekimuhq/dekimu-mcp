@@ -1,0 +1,62 @@
+name: release · publish to public npm on a version tag
+
+# Publishes THIS package to registry.npmjs.org when a `v*` tag is pushed whose
+# version matches package.json. One credential: the `NPM_PUBLISH_TOKEN` repo
+# secret — an npmjs granular access token scoped to this package only (publish,
+# bypass 2FA). `--provenance` attaches a Sigstore attestation via the job's OIDC
+# token (id-token: write), so the npm page proves which commit + workflow built it.
+#
+# prepublishOnly (package.json) re-runs the private-dep check, build and tests on
+# the exact tree being published — an npm publish is not revertible, so it is
+# verified on this side of the line, not by a CI run that happens to be parallel.
+#
+# The token reaches ONLY the publish step; install/build/test never see it.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # npm provenance (Sigstore) — nothing else
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Tag must match package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          [ "v$PKG" = "$REF_NAME" ] || { echo "::error::tag $REF_NAME != package.json v$PKG"; exit 1; }
+
+      - run: npm ci
+
+      - name: Secret present?
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::NPM_PUBLISH_TOKEN is not set on $REPO — mint a granular token on npmjs.com scoped to this package, then: gh secret set NPM_PUBLISH_TOKEN --repo $REPO"; exit 1; }
+
+      # prepublishOnly runs check:no-private-dep → build → test before anything is sent.
+      - name: Publish (public, with provenance)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: npm publish --access public --provenance
