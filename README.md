@@ -7,7 +7,7 @@ A local-first MCP server that gives any agent verifiable action receipts + repro
 ## Install
 
 ```sh
-npx @dekimuhq/dekimu-mcp
+npx @dekimu/dekimu-mcp
 ```
 
 ### Odysseus
@@ -19,7 +19,7 @@ Add to your MCP config:
   "mcpServers": {
     "dekimu": {
       "command": "npx",
-      "args": ["-y", "@dekimuhq/dekimu-mcp"]
+      "args": ["-y", "@dekimu/dekimu-mcp"]
     }
   }
 }
@@ -34,7 +34,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "dekimu": {
       "command": "npx",
-      "args": ["-y", "@dekimuhq/dekimu-mcp"]
+      "args": ["-y", "@dekimu/dekimu-mcp"]
     }
   }
 }
