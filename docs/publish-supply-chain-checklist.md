@@ -1,6 +1,6 @@
 # dekimu-mcp — Supply-chain hardening checklist (pre-first-publish)
 
-`@dekimu/dekimu-mcp` is the ecosystem's **first public-npm publish**. Public npm is the
+`@dekimuhq/dekimu-mcp` is the ecosystem's **first public-npm publish**. Public npm is the
 live attack surface for supply-chain worms — the **Shai-Hulud wave (June 2026) compromised
 100+ npm/PyPI packages** via freshly-published malicious versions and stolen publish tokens.
 Work this list **before pushing the publish button** (the button itself stays SL-gated).
@@ -15,7 +15,7 @@ Status legend: ✅ already in place · ⬜ to do · 🔁 ongoing policy.
 - ✅ `publishConfig.access: public`, registry `registry.npmjs.org`.
 
 ## Identity & publish path
-- ⬜ **Enforce 2FA on the `dekimu` npm account (the `@dekimu` scope is the user scope — `dekimuhq` was already taken on npmjs, found 2026-10-18)** (auth-and-publish level), all members.
+- ⬜ **Enforce 2FA on the `@dekimuhq` npm org** (auth-and-publish level), all members.
 - ⬜ **Prefer OIDC trusted publishing over a long-lived token.** Publish from a GitHub Actions
   `publish.yml` with `permissions: { id-token: write }` → no `NPM_TOKEN` secret to steal.
   If a token is unavoidable, use a **granular automation token scoped to this package only**
@@ -48,7 +48,7 @@ Status legend: ✅ already in place · ⬜ to do · 🔁 ongoing policy.
 - ⬜ `npm publish --dry-run` → sanity-check name/version/access before the real run.
 
 ## Post-publish (🔁 ongoing)
-- 🔁 Watch for **typosquats** of `@dekimu/dekimu-mcp` (dekimu-mcp, dekimuhq-mcp, dekimu_mcp…).
+- 🔁 Watch for **typosquats** of `@dekimuhq/dekimu-mcp` (dekimu-mcp, dekimuhq-mcp, dekimu_mcp…).
 - 🔁 Re-run `npm audit` weekly (or fold into the existing ecosystem link-audit cron).
 - 🔁 On any future version bump, repeat the provenance + dry-run + release-age steps.
 
