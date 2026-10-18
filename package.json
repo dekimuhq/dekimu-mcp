@@ -1,5 +1,5 @@
 {
-  "name": "@dekimuhq/dekimu-mcp",
+  "name": "@dekimu/dekimu-mcp",
   "version": "0.1.0",
   "description": "Verifiable-AI MCP server: mint and verify offline action receipts, run reproducible GDPR checks. Local-first, no telemetry.",
   "license": "MIT",
