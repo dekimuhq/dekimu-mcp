@@ -4,9 +4,9 @@ import { z } from "zod";
 // `kind` is `dekimu.mcp.action.v1` — deliberately distinct from the registered
 // AActR anchors family (`ar.action.v1`) on verify.dekimu.com, which uses a
 // completely different body schema (profile/verb/rule_id/recipe_id/…).
-// Using a separate identifier avoids impersonating a registered family and
-// ensures the live verifier renders these as generic anchored receipts, which
-// is the honest / correct behaviour for local offline receipts.
+// Using a separate identifier avoids impersonating a registered family. These
+// receipts verify offline; the public verifier (verify.dekimu.com) reports them
+// as self-signed / unknown-key, never as Dekimu-trusted.
 export const ActionReceiptSchema = z.object({
   kind: z.literal("dekimu.mcp.action.v1"),
   body: z.object({

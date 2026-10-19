@@ -1,7 +1,8 @@
 // RFC-8785 JSON Canonicalization Scheme (vendored, MIT).
-// Intended to match the canonicalize step used by verify.dekimu.com — UNVERIFIED
-// against a live fixture (see test/conformance.test.ts `it.todo`). Do not rely on
-// cross-verifier interop until that fixture test passes.
+// Intended to match the RFC-8785 canonical form verify.dekimu.com uses. This
+// server's own output is pinned by the recorded fixture in
+// test/conformance.test.ts (offline); the opt-in LIVE_VERIFIER=1 gate there asks
+// the public verifier about that fixture (network).
 export function canonicalize(value: unknown): string {
   if (typeof value === "number") {
     // RFC-8785 §3.2.2.3 forbids NaN/Infinity. JSON.stringify would silently emit

@@ -20,16 +20,25 @@
  *   dekimu-mcp's body shape (action/inputsHash/outputHash/metadata/issuedAt)
  *   has ZERO overlap with that schema — using `ar.action.v1` would impersonate a
  *   registered family and cause the live verifier's AActR body parser to mis-handle
- *   our receipts. Using a distinct identifier avoids that collision; the verifier
- *   renders `dekimu.mcp.action.v1` as a generic anchored receipt, which is honest.
+ *   our receipts. Using a distinct identifier avoids that collision.
  *   Documented in fixtures/dekimu.mcp.action.v1.sample.json and tested below.
+ *
+ * WHAT THE PUBLIC VERIFIER SAYS ABOUT A SELF-SIGNED RECEIPT (truth as of 2026-10-19):
+ *   Self-signed receipts verify OFFLINE (verifyReceipt(), the tests below). The
+ *   public verifier at verify.dekimu.com never reports one as Dekimu-trusted: the
+ *   signing key is self-asserted, so its browser verdict is a "not trusted" status
+ *   (today `unrecognized` — the kind is not registered; once a
+ *   `dekimu.mcp.action.v1` handler lands it becomes a self-signed / unknown-key
+ *   status — never `verified`), and the transparency log holds no entry for it.
  *
  * Live-call gate (optional):
  *   Set LIVE_VERIFIER=1 to enable a real network check against verify.dekimu.com.
- *   The live call submits the RECORDED fixture (no live mint) and asserts the
- *   verifier's JSON API recognises the kind and reports it as a known family.
- *   This gate is skipped in normal CI — it depends on the network and the
- *   verifier's claim store, which won't contain this test receipt by claim ID.
+ *   The live call hashes the RECORDED fixture (no live mint) and asks the
+ *   verifier's JSON API (`POST /api/lookup-by-hash`) for it. The assertion is the
+ *   loose one that holds before and after the handler lands: the endpoint answers,
+ *   and a self-signed receipt is NOT anchored (no transparency-log claim). No
+ *   verdict string is asserted — the by-value verdict runs in the browser only.
+ *   Skipped in normal CI — it depends on the network.
  */
 
 import { createReadStream } from "node:fs";
@@ -268,7 +277,8 @@ describe("conformance — drift: dekimu.mcp.action.v1 body schema vs live verifi
    * violation — the registered AActR anchors family on verify.dekimu.com uses a
    * completely different body schema. A verifier with the AActR body parser would
    * mis-handle receipts with our shape. Using `dekimu.mcp.action.v1` avoids the
-   * collision; the live verifier renders our receipts as generic anchored receipts.
+   * collision; the live verifier reports our receipts as self-signed / not trusted
+   * (see the file header), never as a registered anchors family.
    *
    * This test documents the schema divergence so that IF a future dekimu-mcp body
    * parser ever ships in the verifier, the integration point is caught explicitly.
@@ -358,5 +368,29 @@ describe("conformance — tamper resistance (same checks the live verifier runs)
     const v = verifyReceipt(tampered);
     expect(v.valid).toBe(false);
     expect(v.checks.fingerprintSelfConsistent).toBe(false);
+  });
+});
+
+// ── Live-verifier gate (opt-in: LIVE_VERIFIER=1) ─────────────────────────────
+
+describe.skipIf(!process.env.LIVE_VERIFIER)("conformance — live verifier (LIVE_VERIFIER=1)", () => {
+  const VERIFIER = process.env.LIVE_VERIFIER_URL ?? "https://verify.dekimu.com";
+
+  it("reports the self-signed fixture as not anchored (no transparency-log claim)", async () => {
+    const f = loadFixture();
+    const receipt = { kind: f.kind, body: f.body, issuer: f.issuer, signature: f.signature };
+    const value = sha256Hex(canonicalize(receipt));
+    const res = await fetch(`${VERIFIER}/api/lookup-by-hash`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ algo: "sha256", value }),
+    });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { claims: unknown[] };
+    // Self-signed = never Dekimu-trusted, never logged. This holds whether the
+    // verifier's browser verdict for the kind is `unrecognized` (today) or the
+    // self-signed / unknown-key status (once the kind handler ships).
+    expect(Array.isArray(json.claims)).toBe(true);
+    expect(json.claims).toHaveLength(0);
   });
 });
