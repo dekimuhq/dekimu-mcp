@@ -12,8 +12,9 @@
     "(profile/verb/rule_id/recipe_id/outcome/executed_at/decision_commit/…).",
     "dekimu-mcp's body shape (action/inputsHash/outputHash/metadata/issuedAt) has zero",
     "overlap with that schema — using `ar.action.v1` would impersonate a registered family.",
-    "Using `dekimu.mcp.action.v1` signals a local offline receipt; verify.dekimu.com renders",
-    "it as a generic anchored receipt, which is correct and honest."
+    "Using `dekimu.mcp.action.v1` signals a local offline receipt: it verifies offline",
+    "(verifyReceipt); verify.dekimu.com reports it as self-signed / unknown-key, never as",
+    "Dekimu-trusted (today the kind is `unrecognized` there; a kind handler is in flight)."
   ],
   "_fixture_meta": {
     "private_key_hex": "0101010101010101010101010101010101010101010101010101010101010101",

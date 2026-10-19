@@ -8,7 +8,7 @@ import { operateInputSchema, operateHandler } from "./tools/operate-capability.j
 import { policyQueryInputSchema, policyQueryHandler } from "./tools/autonomy-policy-query.js";
 import { digestLatestInputSchema, digestLatestHandler } from "./tools/ecosystem-digest-latest.js";
 
-const server = new McpServer({ name: "dekimu-mcp", version: "0.1.0" });
+const server = new McpServer({ name: "dekimu-mcp", version: "0.2.0" });
 
 server.registerTool(
   "mint_action_receipt",
