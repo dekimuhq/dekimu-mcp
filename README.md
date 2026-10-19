@@ -72,8 +72,11 @@ The signing/anchoring keys live in the injected issuer, never in this server. Bo
 
 - **Verify a receipt:** https://verify.dekimu.com
 - **The specs:** [Anchored Receipts](https://github.com/dekimuhq/anchors-spec) · [agents.txt — policy for agent actions](https://github.com/dekimuhq/agents-txt)
-- **Who builds this:** [Dekimu](https://dekimu.com) — EU-first compliance & agent-trust tooling. Local-first, no lock-in.
 
 ## License
 
 MIT
+
+## Part of the Dekimu ecosystem
+
+Built and maintained by [Dekimu](https://dekimu.com). The Dekimu ecosystem — [Dekimu Hub](https://app.dekimu.com) and the public verifier at [verify.dekimu.com](https://verify.dekimu.com) — is the reference implementation for this project. Sibling projects: [anchors-spec](https://github.com/dekimuhq/anchors-spec) · [agents.txt](https://github.com/dekimuhq/agents-txt) · [regulation-as-code](https://github.com/dekimuhq/regulation-as-code) · [claude-memory](https://github.com/dekimuhq/claude-memory). All of them: https://dekimu.com/open-source.
