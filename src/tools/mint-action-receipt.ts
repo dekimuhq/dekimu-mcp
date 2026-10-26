@@ -14,7 +14,7 @@ export const mintInputSchema = {
   action: z.string().describe("What the agent did, e.g. 'summarized document'"),
   inputs: z.unknown().optional().describe("Inputs — hashed, not stored, unless you pass them in metadata"),
   output: z.unknown().optional().describe("Output — hashed, not stored"),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   // ── Anchored-mode fields (ignored in the default local mode) ────────────────
   credentialId: z
     .string()

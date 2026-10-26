@@ -13,7 +13,7 @@ export const ActionReceiptSchema = z.object({
     action: z.string(),
     inputsHash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
     outputHash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
     issuedAt: z.number().int(),
   }),
   issuer: z.object({
