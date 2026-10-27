@@ -2,7 +2,7 @@ import { z } from "zod";
 import { verifyReceipt } from "../receipts/verify.js";
 
 export const verifyInputSchema = {
-  receipt: z.union([z.string(), z.record(z.unknown())]).describe("A receipt object or its JSON string"),
+  receipt: z.union([z.string(), z.record(z.string(), z.unknown())]).describe("A receipt object or its JSON string"),
 };
 
 export function verifyHandler(args: { receipt: string | Record<string, unknown> }) {
