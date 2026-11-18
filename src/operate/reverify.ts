@@ -8,12 +8,18 @@
  *      (`trust_outcome === "valid_trusted"`, not merely `signature.ok` — a `valid_untrusted`
  *      receipt is cryptographically intact but signed by an unrecognised/ephemeral key, which a
  *      forger could self-mint; the trust verdict is what makes this independent of the door)
- *   2. it's the registered AActR family (`claim_type === "ar.action.v1"`)
- *   3. `caveats_consumed.capability` == the capability we invoked (no bait-and-switch)
- *   4. `credential_id` is present and, when we know which credential we used, equals it
- *      (an agent-side expectation check: the receipt's Hub-signed credential_id == the
- *      credentialId of the credential WE handed the door — confirms the door bound our
- *      credential, not a different one; skipped when the caller didn't supply an expected id)
+ *   2. it's the family the capability mints (`expectedReceiptFor`): the AActR
+ *      (`ar.action.v1`) for most, a provenance receipt (`ar.provenance.v1`, body kind
+ *      `ropa.register.v1`) for `ropa.compile`
+ *   3. AActR only: `caveats_consumed.capability` == the capability we invoked
+ *   4. AActR only: `credential_id` is present and, when we know which credential we used,
+ *      equals it (the door bound OUR credential, not a different one)
+ *
+ * A provenance receipt records WHAT was produced, not WHO asked: it carries no capability
+ * caveat and no credential id, so checks 3-4 cannot run. `actionBound: false` says so
+ * plainly instead of failing them. `workspaceKeyMatches` (signing kid is this workspace's
+ * per-tenant key) is reported for both families but never fails `match`: a deployment
+ * without per-tenant signing signs with the shared Hub key, which is still trusted.
  *
  * Fail-safe + non-throwing: a verifier that is unreachable / returns junk yields
  * `{ checked: false }` — the action still happened at the door; we just couldn't
@@ -26,6 +32,25 @@
 import type { FetchLike } from "./operate.js";
 
 const DEFAULT_VERIFY_URL = "https://verify.dekimu.com";
+
+/** What a capability's receipt must look like, per receipt family. */
+export interface ExpectedReceipt {
+  readonly claimType: string;
+  /** Required `envelope.body.kind`, when the family carries one. */
+  readonly bodyKind?: string;
+  /** The receipt records the invoked capability + the credential (AActR); provenance receipts do not. */
+  readonly actionBound: boolean;
+}
+
+const ACTION_RECEIPT: ExpectedReceipt = { claimType: "ar.action.v1", actionBound: true };
+const NON_ACTION_RECEIPTS: Readonly<Record<string, ExpectedReceipt>> = {
+  // agent-capabilities ropa.compile: `receipt: { family: "apr" }`, body { kind: "ropa.register.v1", register }.
+  "ropa.compile": { claimType: "ar.provenance.v1", bodyKind: "ropa.register.v1", actionBound: false },
+};
+
+export function expectedReceiptFor(capability: string): ExpectedReceipt {
+  return NON_ACTION_RECEIPTS[capability] ?? ACTION_RECEIPT;
+}
 
 export interface ReverifyResult {
   /** We successfully fetched + parsed the public verifier's report. */
@@ -45,6 +70,13 @@ export interface ReverifyResult {
   readonly receiptClaimType?: string;
   readonly receiptCapability?: string;
   readonly receiptCredentialId?: string;
+  /** false = this receipt family does not record who asked (capability/credential checks n/a). */
+  readonly actionBound?: boolean;
+  readonly receiptBodyKind?: string;
+  /** The verifier's matched signing kid. */
+  readonly issuerKid?: string;
+  /** Kid is this workspace's per-tenant key (`hub-<ws>-<gen>`); null = not compared. Informational. */
+  readonly workspaceKeyMatches?: boolean | null;
 }
 
 export interface ReverifyArgs {
@@ -52,6 +84,8 @@ export interface ReverifyArgs {
   readonly capability: string;
   /** The credentialId the caller acted under, if known — enables the equality check. */
   readonly expectedCredentialId?: string | null;
+  /** The workspace the credential is scoped to, if known — enables `workspaceKeyMatches`. */
+  readonly expectedWorkspaceId?: string | null;
 }
 
 export interface ReverifyDeps {
@@ -100,15 +134,25 @@ export async function reverifyAction(args: ReverifyArgs, deps: ReverifyDeps): Pr
   const receiptClaimType = isString(env.claim_type) ? env.claim_type : undefined;
   const receiptCapability = isString(caveats.capability) ? caveats.capability : undefined;
   const receiptCredentialId = isString(body.credential_id) ? body.credential_id : undefined;
+  const receiptBodyKind = isString(body.kind) ? body.kind : undefined;
+  const issuerKid = isString(sig.matchedKid) ? sig.matchedKid : undefined;
 
-  const isAActR = receiptClaimType === "ar.action.v1";
+  const expected = expectedReceiptFor(args.capability);
+  const claimTypeOk = receiptClaimType === expected.claimType;
+  const bodyKindOk = expected.bodyKind === undefined || receiptBodyKind === expected.bodyKind;
   const capabilityMatches = receiptCapability === args.capability;
   const credentialBound = Boolean(receiptCredentialId);
   const credentialIdMatches =
     args.expectedCredentialId == null ? null : receiptCredentialId === args.expectedCredentialId;
+  const workspaceKeyMatches =
+    args.expectedWorkspaceId == null || issuerKid === undefined
+      ? null
+      : issuerKid.startsWith(`hub-${args.expectedWorkspaceId}-`);
 
-  const match =
-    issuerTrusted && isAActR && capabilityMatches && credentialBound && credentialIdMatches !== false;
+  const bindingOk = expected.actionBound
+    ? capabilityMatches && credentialBound && credentialIdMatches !== false
+    : true;
+  const match = issuerTrusted && claimTypeOk && bodyKindOk && bindingOk;
 
   const reason = match
     ? undefined
@@ -116,15 +160,17 @@ export async function reverifyAction(args: ReverifyArgs, deps: ReverifyDeps): Pr
       ? "the public verifier reports the receipt signature is not valid"
       : !issuerTrusted
         ? `issuer key is not trusted (trust_outcome: ${trustOutcome ?? "(missing)"}) — the receipt is not signed by a Hub-controlled key`
-        : !isAActR
-          ? `unexpected claim_type: ${receiptClaimType ?? "(missing)"} (expected ar.action.v1)`
-          : !capabilityMatches
-            ? `capability mismatch: receipt records ${receiptCapability ?? "(missing)"}, invoked ${args.capability}`
-            : !credentialBound
-              ? "receipt carries no credential_id (action was not mandate-bound)"
-              : credentialIdMatches === false
-                ? "credential_id mismatch: receipt bound a different credential than the one used"
-                : undefined;
+        : !claimTypeOk
+          ? `unexpected claim_type: ${receiptClaimType ?? "(missing)"} (expected ${expected.claimType} for ${args.capability})`
+          : !bodyKindOk
+            ? `unexpected body kind: ${receiptBodyKind ?? "(missing)"} (expected ${expected.bodyKind})`
+            : !capabilityMatches
+              ? `capability mismatch: receipt records ${receiptCapability ?? "(missing)"}, invoked ${args.capability}`
+              : !credentialBound
+                ? "receipt carries no credential_id (action was not mandate-bound)"
+                : credentialIdMatches === false
+                  ? "credential_id mismatch: receipt bound a different credential than the one used"
+                  : undefined;
 
   return {
     checked: true,
@@ -132,10 +178,12 @@ export async function reverifyAction(args: ReverifyArgs, deps: ReverifyDeps): Pr
     ...(reason ? { reason } : {}),
     signatureOk,
     ...(trustOutcome ? { trustOutcome } : {}),
-    capabilityMatches,
-    credentialBound,
-    credentialIdMatches,
+    actionBound: expected.actionBound,
+    ...(expected.actionBound ? { capabilityMatches, credentialBound, credentialIdMatches } : {}),
+    workspaceKeyMatches,
+    ...(issuerKid ? { issuerKid } : {}),
     ...(receiptClaimType ? { receiptClaimType } : {}),
+    ...(receiptBodyKind ? { receiptBodyKind } : {}),
     ...(receiptCapability ? { receiptCapability } : {}),
     ...(receiptCredentialId ? { receiptCredentialId } : {}),
   };

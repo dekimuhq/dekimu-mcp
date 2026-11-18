@@ -14,7 +14,7 @@ function verifierReport(over: {
   capability?: string;
   credentialId?: string | undefined;
 } = {}) {
-  const { sigOk = true, claimType = "ar.action.v1", capability = "ropa.compile" } = over;
+  const { sigOk = true, claimType = "ar.action.v1", capability = "compliance.audit.run" } = over;
   // Realistic: a bad signature can never be valid_trusted.
   const trustOutcome = over.trustOutcome ?? (sigOk ? "valid_trusted" : "invalid_signature");
   const credentialId = "credentialId" in over ? over.credentialId : "cred_test_0001";
@@ -46,7 +46,7 @@ function fetchReturning(status: number, json: unknown): {
   return { fetch, urls, inits };
 }
 
-const ARGS = { receiptId: "ar.action.v1:01ABC", capability: "ropa.compile", expectedCredentialId: "cred_test_0001" };
+const ARGS = { receiptId: "ar.action.v1:01ABC", capability: "compliance.audit.run", expectedCredentialId: "cred_test_0001" };
 
 describe("reverifyAction", () => {
   it("matches when trusted sig + AActR + capability + credential_id all agree", async () => {
@@ -114,7 +114,7 @@ describe("reverifyAction", () => {
 
   it("does not compare credential_id when the expected id is unknown", async () => {
     const { fetch } = fetchReturning(200, verifierReport());
-    const r = await reverifyAction({ receiptId: ARGS.receiptId, capability: "ropa.compile" }, { fetch });
+    const r = await reverifyAction({ receiptId: ARGS.receiptId, capability: "compliance.audit.run" }, { fetch });
     expect(r.match).toBe(true);
     expect(r.credentialIdMatches).toBeNull();
   });
@@ -147,5 +147,59 @@ describe("reverifyAction", () => {
     const { fetch, urls } = fetchReturning(200, verifierReport());
     await reverifyAction(ARGS, { fetch });
     expect(urls[0]).toBe("https://verify.dekimu.com/api/v/ar.action.v1%3A01ABC");
+  });
+});
+
+// ropa.compile mints a PROVENANCE receipt (ar.provenance.v1, body {kind, register}), not an
+// AActR. Shape below mirrors verify.dekimu.com's live report for apr.v1:01M7R9AE7T9WCMD4PXRA000000
+// (2026-11-18). Until then reverify demanded ar.action.v1 and reported a trusted, correct RoPA
+// receipt as `match: false` — the loud integrity signal, raised on every ropa.compile call.
+describe("reverifyAction — provenance receipts (ropa.compile)", () => {
+  function aprReport(over: { claimType?: string; kind?: string; trustOutcome?: string; kid?: string } = {}) {
+    const trustOutcome = over.trustOutcome ?? "valid_trusted";
+    return {
+      signature: {
+        ok: true,
+        issuerTrusted: trustOutcome === "valid_trusted",
+        trust_outcome: trustOutcome,
+        matchedKid: over.kid ?? "hub-ws_ops-2",
+      },
+      envelope: {
+        claim_type: over.claimType ?? "ar.provenance.v1",
+        body: { kind: over.kind ?? "ropa.register.v1", register: { activities: [] } },
+      },
+    };
+  }
+  const APR = { receiptId: "apr.v1:01M7", capability: "ropa.compile", expectedCredentialId: "cred_x", expectedWorkspaceId: "ws_ops" };
+
+  it("matches a trusted provenance receipt of the right kind, and says it is not action-bound", async () => {
+    const r = await reverifyAction(APR, fetchReturning(200, aprReport()));
+    expect(r).toMatchObject({ checked: true, match: true, actionBound: false, workspaceKeyMatches: true, receiptBodyKind: "ropa.register.v1" });
+    // capability/credential checks cannot run on this family — they are absent, not "false".
+    expect(r.capabilityMatches).toBeUndefined();
+    expect(r.credentialBound).toBeUndefined();
+  });
+
+  it("still refuses an untrusted issuer", async () => {
+    const r = await reverifyAction(APR, fetchReturning(200, aprReport({ trustOutcome: "valid_untrusted" })));
+    expect(r.match).toBe(false);
+    expect(r.reason).toContain("not trusted");
+  });
+
+  it("refuses an AActR where a provenance receipt was expected", async () => {
+    const r = await reverifyAction(APR, fetchReturning(200, aprReport({ claimType: "ar.action.v1" })));
+    expect(r.match).toBe(false);
+    expect(r.reason).toContain("expected ar.provenance.v1");
+  });
+
+  it("refuses a provenance receipt of a different kind", async () => {
+    const r = await reverifyAction(APR, fetchReturning(200, aprReport({ kind: "dpia.report.v1" })));
+    expect(r.match).toBe(false);
+    expect(r.reason).toContain("unexpected body kind");
+  });
+
+  it("reports (never fails on) a key outside this workspace — the shared Hub key is still trusted", async () => {
+    const r = await reverifyAction(APR, fetchReturning(200, aprReport({ kid: "hub-2026" })));
+    expect(r).toMatchObject({ match: true, workspaceKeyMatches: false, issuerKid: "hub-2026" });
   });
 });
