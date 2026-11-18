@@ -260,13 +260,13 @@ export async function operate(
   switch (res.status) {
     case 200: {
       const receiptId = str("receiptId");
-      // Close the loop: independently re-verify the minted AActR via the public verifier (#5).
+      // Close the loop: independently re-verify the minted receipt via the public verifier (#5).
       // Skipped only when the door returned no receiptId (nothing to attest). Fail-safe.
       let verification: ReverifyResult | undefined;
       if (receiptId) {
         const expectedCredentialId = isString(credential.credentialId) ? credential.credentialId : null;
         verification = await reverifyAction(
-          { receiptId, capability: input.capability, expectedCredentialId },
+          { receiptId, capability: input.capability, expectedCredentialId, expectedWorkspaceId: workspaceId },
           { fetch: fetchImpl, verifyBaseUrl: config.verifyBaseUrl },
         );
       }

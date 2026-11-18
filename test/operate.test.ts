@@ -223,9 +223,9 @@ describe("operate — post-action re-verification (#5)", () => {
   it("attaches a matching verification when the public verifier confirms the receipt", async () => {
     const { fetch, calls } = routedFetch(
       { status: 200, json: { ok: true, output: { ran: true }, receiptId: "ar.action.v1:01ABC" } },
-      { status: 200, json: verifierReport("ropa.compile") },
+      { status: 200, json: verifierReport("compliance.audit.run") },
     );
-    const res = await operate({ capability: "ropa.compile", input: { since: "2026-01-01" } }, configFor(), { fetch, ...FIXED_DEPS });
+    const res = await operate({ capability: "compliance.audit.run", input: { since: "2026-01-01" } }, configFor(), { fetch, ...FIXED_DEPS });
     expect(res.status).toBe("ok");
     expect(res.verification?.checked).toBe(true);
     expect(res.verification?.match).toBe(true);
@@ -239,7 +239,7 @@ describe("operate — post-action re-verification (#5)", () => {
       { status: 200, json: { ok: true, receiptId: "ar.action.v1:01ABC" } },
       { status: 200, json: verifierReport("erasure.execute") }, // receipt records a DIFFERENT verb
     );
-    const res = await operate({ capability: "ropa.compile", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    const res = await operate({ capability: "compliance.audit.run", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
     expect(res.status).toBe("ok");
     expect(res.verification?.match).toBe(false);
     expect(res.verification?.reason).toContain("capability mismatch");
@@ -248,9 +248,9 @@ describe("operate — post-action re-verification (#5)", () => {
   it("skips re-verification (no second call) when the door returns no receiptId", async () => {
     const { fetch, calls } = routedFetch(
       { status: 200, json: { ok: true } }, // no receiptId
-      { status: 200, json: verifierReport("ropa.compile") },
+      { status: 200, json: verifierReport("compliance.audit.run") },
     );
-    const res = await operate({ capability: "ropa.compile", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    const res = await operate({ capability: "compliance.audit.run", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
     expect(res.status).toBe("ok");
     expect(res.verification).toBeUndefined();
     expect(calls.map((c) => c.method)).toEqual(["POST"]);
@@ -261,7 +261,7 @@ describe("operate — post-action re-verification (#5)", () => {
       { status: 200, json: { ok: true, receiptId: "ar.action.v1:01ABC" } },
       { status: 404, json: { error: "not found" } },
     );
-    const res = await operate({ capability: "ropa.compile", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    const res = await operate({ capability: "compliance.audit.run", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
     expect(res.status).toBe("ok");
     expect(res.verification?.checked).toBe(false);
   });
