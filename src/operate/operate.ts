@@ -43,6 +43,8 @@ export const CAPABILITY_IDS = [
   "legal.dpa.generate",
   "memory.retrieve",
   "operator.draft-reminder",
+  "workspace.controller.set",
+  "purpose.record",
 ] as const;
 export type CapabilityId = (typeof CAPABILITY_IDS)[number];
 
