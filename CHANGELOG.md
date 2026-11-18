@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+**`operate_capability` accepts every door capability.** Added `compliance.audit.run`, `legal.privacy.generate`, `legal.dpa.generate` and `memory.retrieve`: they were live on the door and grantable, but the tool's input enum refused them.
+
 ## 0.2.0 — 2026-10-19
 
 **Breaking — `gdpr_obligation_check` output ids.** Obligation ids are now the ecosystem's canonical ids, identical to the public Regulation-as-Code GDPR profile (manifest `gdpr` 1.2.0) and Dekimu Hub:

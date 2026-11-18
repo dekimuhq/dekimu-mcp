@@ -26,13 +26,22 @@ import { canonicalize } from "../crypto/canonicalize.js";
 import { sign } from "../crypto/sign.js";
 import { reverifyAction, type ReverifyResult } from "./reverify.js";
 
-/** Door capability ids (route source + design §3). */
+/**
+ * Door capability ids — every capability the live door registers (GET the door URL
+ * for the current list). Keep in step with the door: an id missing here is a
+ * capability an agent was granted but cannot call through this tool (four were
+ * missing until 2026-11-18). Unknown ids are still refused by the door itself.
+ */
 export const CAPABILITY_IDS = [
   "gdpr.scan",
   "ropa.compile",
   "dpia.run",
   "erasure.execute",
   "compass.passport.read",
+  "compliance.audit.run",
+  "legal.privacy.generate",
+  "legal.dpa.generate",
+  "memory.retrieve",
   "operator.draft-reminder",
 ] as const;
 export type CapabilityId = (typeof CAPABILITY_IDS)[number];
