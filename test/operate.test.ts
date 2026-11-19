@@ -162,12 +162,25 @@ describe("operate — request assembly + verdict mapping", () => {
     expect(body.workspaceId).toBe("ws_conformance_0001"); // from credential, not args
     expect(body.agentId).toBe("agent_conformance_0001");
     expect(body.credential).toMatchObject({ credentialId: "cred_test_0001" });
-    expect(body).not.toHaveProperty("idempotencyKey"); // source-driven: door has no such field
+    expect(body).not.toHaveProperty("idempotencyKey"); // key travels as a header, not in the body
     expect(body).not.toHaveProperty("spend"); // omitted when not provided
     const proof = body.proof as Record<string, unknown>;
     expect(proof).toHaveProperty("jti");
     expect(proof).toHaveProperty("ts");
     expect(typeof proof.sig).toBe("string");
+  });
+
+  it("sends the Idempotency-Key header only when the caller supplies one, never in the signed body", async () => {
+    const seen: Array<Record<string, string>> = [];
+    const fetch: FetchLike = async (_url, init) => {
+      if (init.method === "GET") return { status: 404, json: async () => ({}) };
+      seen.push(init.headers);
+      return { status: 200, json: async () => ({ ok: true }) };
+    };
+    await operate({ capability: "erasure.execute", input: {}, idempotencyKey: "retry-1" }, configFor(), { fetch, ...FIXED_DEPS });
+    await operate({ capability: "erasure.execute", input: {} }, configFor(), { fetch, ...FIXED_DEPS });
+    expect(seen[0]!["idempotency-key"]).toBe("retry-1");
+    expect(seen[1]).not.toHaveProperty("idempotency-key"); // negative control
   });
 
   it("includes spend only when provided", async () => {
