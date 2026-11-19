@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+**`operate_capability` accepts the door's compliance write verbs.** Added `workspace.controller.set` (names the controller on the workspace business profile) and `purpose.record` (records a processing purpose with its Art. 6 basis and mints its purpose receipt). Both mint the standard action receipt, so re-verification needs no new family.
+
 **`operate_capability` re-verifies each capability's own receipt family.** `ropa.compile` mints a provenance receipt (`ar.provenance.v1`, body kind `ropa.register.v1`), not an action receipt, and every correct RoPA receipt was reported `match: false`. Provenance receipts record what was produced, not who asked, so the result now carries `actionBound: false` and omits the capability and credential checks instead of failing them. New informational fields: `workspaceKeyMatches`, `issuerKid` and `receiptBodyKind`.
 
 **`operate_capability` accepts every door capability.** Added `compliance.audit.run`, `legal.privacy.generate`, `legal.dpa.generate` and `memory.retrieve`: they were live on the door and grantable, but the tool's input enum refused them.
