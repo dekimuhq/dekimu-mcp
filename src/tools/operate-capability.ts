@@ -12,12 +12,19 @@ export const operateInputSchema = {
     .object({ currency: z.string(), amount: z.number() })
     .optional()
     .describe("Optional spend budget this action consumes (for side-effecting capabilities)."),
+  idempotencyKey: z
+    .string()
+    .min(1)
+    .max(255)
+    .optional()
+    .describe("Exactly-once key. Reuse the SAME key when retrying a side-effecting call (e.g. erasure.execute) so it cannot run twice."),
 };
 
 type OperateArgs = {
   capability: (typeof CAPABILITY_IDS)[number];
   input: unknown;
   spend?: { currency: string; amount: number };
+  idempotencyKey?: string;
 };
 
 function asText(obj: unknown) {

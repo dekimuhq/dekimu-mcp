@@ -14,9 +14,10 @@
  * design docs):
  *   body = { capabilityId, input, workspaceId, agentId, credential, spend?, proof }
  *   proof.sig = base64url ed25519 over canonicalize({jti,ts,capabilityId,workspaceId,agentId,input})
- * Note: the door body has NO idempotencyKey field — omitted deliberately (source wins
- * over the design doc's speculative arg). `spend` is top-level and NOT part of the
- * signed payload.
+ * The door DOES support exactly-once: an `Idempotency-Key` header (or body `idempotencyKey`)
+ * makes a retry with a fresh proof (new jti) return the first result instead of executing
+ * twice. We send it as the header, only when the caller supplies one. `spend` is top-level
+ * and NOT part of the signed payload.
  */
 import { randomUUID } from "node:crypto";
 import * as ed from "@noble/ed25519";
@@ -77,6 +78,8 @@ export interface OperateInput {
   readonly capability: CapabilityId;
   readonly input: unknown;
   readonly spend?: Spend;
+  /** Caller-chosen exactly-once key (1-255 chars). Reuse the SAME key when retrying a side-effecting call. */
+  readonly idempotencyKey?: string;
 }
 
 export type OperateStatus =
@@ -235,7 +238,10 @@ export async function operate(
   try {
     res = await fetchImpl(doorUrl, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        ...(input.idempotencyKey ? { "idempotency-key": input.idempotencyKey } : {}),
+      },
       body: JSON.stringify(body),
     });
   } catch (e) {
